@@ -8,6 +8,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- FileSaver.js para salvar arquivos -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- JSZip para criar pastas zipadas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Google Fonts -->
@@ -387,6 +391,60 @@
             font-size: 0.7rem;
             margin-left: 8px;
         }
+        
+        .export-bar {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 40px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .export-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: white;
+            border-radius: 40px;
+            border: 2px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .export-option.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        .export-option input[type="radio"] {
+            accent-color: #2563eb;
+            width: 18px;
+            height: 18px;
+        }
+        
+        /* Path selector */
+        .path-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: white;
+            padding: 5px;
+            border-radius: 40px;
+            border: 2px solid #e2e8f0;
+        }
+        .path-selector input {
+            flex: 1;
+            border: none;
+            padding: 10px 15px;
+            font-size: 0.9rem;
+        }
+        .path-selector input:focus {
+            outline: none;
+        }
+        .path-selector button {
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -462,6 +520,9 @@
                 <i class="fas fa-database"></i> Visualizar Dados
                 <span class="data-counter">{{ totalRegistros }}</span>
             </div>
+            <div class="sidebar-item" v-if="usuarioLogado.perfil === 'owner'" :class="{active:aba==='exportConfig'}" @click="aba='exportConfig'">
+                <i class="fas fa-folder-open"></i> Config. Exportação
+            </div>
             <div class="sidebar-item" v-if="usuarioLogado.perfil === 'owner'" :class="{active:aba==='config'}" @click="aba='config'">
                 <i class="fas fa-cog"></i> Configurações
             </div>
@@ -489,6 +550,25 @@
                         <div class="stat-value">{{ formatMoney(totalVendas) }}</div>
                         <div class="stat-label">Valor Total</div>
                     </div>
+                </div>
+                
+                <!-- Barra de exportação no dashboard -->
+                <div class="export-bar">
+                    <div style="flex:1; font-weight: 600;">Exportar dados completos:</div>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <label class="export-option" :class="{active: formatoExportacao === 'json'}">
+                            <input type="radio" value="json" v-model="formatoExportacao"> JSON (padrão)
+                        </label>
+                        <label class="export-option" :class="{active: formatoExportacao === 'csv'}">
+                            <input type="radio" value="csv" v-model="formatoExportacao"> CSV
+                        </label>
+                        <label class="export-option" :class="{active: formatoExportacao === 'zip'}">
+                            <input type="radio" value="zip" v-model="formatoExportacao"> ZIP (pasta)
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" @click="exportarTodosDados">
+                        <i class="fas fa-download"></i> Exportar Tudo
+                    </button>
                 </div>
                 
                 <div v-if="blingConfig.modoSimulado" class="warning-message">
@@ -548,7 +628,7 @@
                 </div>
             </div>
 
-            <!-- Dados Simulados (NOVA ABA) -->
+            <!-- Dados Simulados -->
             <div v-if="aba==='simulados'">
                 <h2 class="section-title">🧪 Gerenciar Dados Simulados</h2>
                 
@@ -582,6 +662,25 @@
                             <div class="stat-value">{{ db.vendas.length }}</div>
                             <div class="stat-label">Vendas</div>
                         </div>
+                    </div>
+                    
+                    <!-- Barra de exportação nos dados simulados -->
+                    <div class="export-bar" style="margin-top: 20px;">
+                        <div style="flex:1;">Exportar dados simulados:</div>
+                        <div style="display: flex; gap: 15px;">
+                            <label class="export-option" :class="{active: formatoExportacao === 'json'}">
+                                <input type="radio" value="json" v-model="formatoExportacao"> JSON (padrão)
+                            </label>
+                            <label class="export-option" :class="{active: formatoExportacao === 'csv'}">
+                                <input type="radio" value="csv" v-model="formatoExportacao"> CSV
+                            </label>
+                            <label class="export-option" :class="{active: formatoExportacao === 'zip'}">
+                                <input type="radio" value="zip" v-model="formatoExportacao"> ZIP (pasta)
+                            </label>
+                        </div>
+                        <button class="btn btn-primary" @click="exportarTodosDados">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
                     </div>
                     
                     <div v-if="blingConfig.modoSimulado" class="success-message">
@@ -631,9 +730,24 @@
                     <button class="btn" :class="abaDados === 'fornecedores' ? 'btn-primary' : 'btn-outline'" @click="abaDados='fornecedores'">
                         <i class="fas fa-building"></i> Fornecedores ({{ db.fornecedores.length }})
                     </button>
-                    
-                    <button class="btn btn-outline" style="margin-left: auto;" @click="exportarCSV(abaDados)">
-                        <i class="fas fa-download"></i> Exportar CSV
+                </div>
+
+                <!-- Barra de exportação -->
+                <div class="export-bar">
+                    <div style="flex:1;">Exportar dados de {{ abaDados }}:</div>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <label class="export-option" :class="{active: formatoExportacao === 'json'}">
+                            <input type="radio" value="json" v-model="formatoExportacao"> JSON (padrão)
+                        </label>
+                        <label class="export-option" :class="{active: formatoExportacao === 'csv'}">
+                            <input type="radio" value="csv" v-model="formatoExportacao"> CSV
+                        </label>
+                        <label class="export-option" :class="{active: formatoExportacao === 'zip'}">
+                            <input type="radio" value="zip" v-model="formatoExportacao"> ZIP (pasta)
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" @click="exportarDados(abaDados)">
+                        <i class="fas fa-download"></i> Exportar {{ abaDados }}
                     </button>
                 </div>
 
@@ -682,7 +796,77 @@
                 </div>
             </div>
 
-            <!-- Configurações -->
+            <!-- Configuração de Exportação (NOVA) -->
+            <div v-if="aba==='exportConfig' && usuarioLogado.perfil === 'owner'">
+                <h2 class="section-title">📂 Configuração de Exportação</h2>
+                
+                <div class="config-card">
+                    <h3 style="margin-bottom: 20px;">Diretório de Exportação</h3>
+                    
+                    <div class="input-group">
+                        <label>Estrutura de Pastas</label>
+                        <div class="path-selector">
+                            <input type="text" v-model="exportConfig.basePath" placeholder="Ex: /exports/bling-data">
+                            <button class="btn btn-sm btn-outline" @click="abrirSeletorPastas">
+                                <i class="fas fa-folder-open"></i> Selecionar
+                            </button>
+                        </div>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-top: 5px;">
+                            <i class="fas fa-info-circle"></i> Os arquivos serão salvos nesta estrutura: {{ exportConfig.basePath }}/YYYY-MM-DD/nome_arquivo.json
+                        </p>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Organização dos Arquivos</label>
+                        <select v-model="exportConfig.organizacao">
+                            <option value="data">Por data (YYYY-MM-DD/modulo.json)</option>
+                            <option value="modulo">Por módulo (modulo/YYYY-MM-DD.json)</option>
+                            <option value="unica">Pasta única com timestamp</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Incluir metadados</label>
+                        <select v-model="exportConfig.incluirMetadados">
+                            <option value="sim">Sim - incluir data/hora e total de registros</option>
+                            <option value="nao">Não - apenas dados brutos</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Formato de nome de arquivo</label>
+                        <input type="text" v-model="exportConfig.nomeArquivo" placeholder="Ex: dados_{modulo}_{data}">
+                        <p style="font-size: 0.85rem; color: #64748b; margin-top: 5px;">
+                            Variáveis disponíveis: {modulo}, {data}, {timestamp}, {contador}
+                        </p>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; margin-top: 20px;">
+                        <button class="btn btn-primary" @click="salvarConfiguracaoExportacao">
+                            <i class="fas fa-save"></i> Salvar Configuração
+                        </button>
+                        <button class="btn btn-outline" @click="testarExportacao">
+                            <i class="fas fa-play"></i> Testar Exportação
+                        </button>
+                    </div>
+
+                    <div v-if="exportacaoTesteResultado" class="success-message" style="margin-top: 20px;">
+                        <i class="fas fa-check-circle"></i> {{ exportacaoTesteResultado }}
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <h3>Exemplos de Exportação</h3>
+                    <div style="background: #f1f5f9; padding: 20px; border-radius: 30px; font-family: monospace;">
+                        <p><i class="fas fa-folder"></i> {{ exportConfig.basePath }}/2024-01-15/clientes.json</p>
+                        <p><i class="fas fa-folder"></i> {{ exportConfig.basePath }}/2024-01-15/produtos.json</p>
+                        <p><i class="fas fa-folder"></i> {{ exportConfig.basePath }}/2024-01-15/vendas.json</p>
+                        <p style="margin-top: 10px; color: #2563eb;">⬇️ Download será organizado automaticamente</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configurações Gerais -->
             <div v-if="aba==='config' && usuarioLogado.perfil === 'owner'">
                 <h2 class="section-title">⚙️ Configurações</h2>
                 
@@ -718,6 +902,43 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de Seleção de Pasta (simulado) -->
+    <div v-if="mostrarSeletorPastas" class="modal-overlay">
+        <div class="modal-content">
+            <div style="font-size: 50px; color: #2563eb; margin-bottom: 20px;">
+                <i class="fas fa-folder-tree"></i>
+            </div>
+            <h2 style="margin-bottom: 15px;">Selecionar Diretório</h2>
+            <p style="color: #64748b; margin-bottom: 25px;">
+                Escolha uma das opções abaixo para simular a seleção de pasta:
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">
+                <button class="btn btn-outline" @click="selecionarPasta('/exports/bling-data')">
+                    <i class="fas fa-folder"></i> /exports/bling-data
+                </button>
+                <button class="btn btn-outline" @click="selecionarPasta('/backups/bling')">
+                    <i class="fas fa-folder"></i> /backups/bling
+                </button>
+                <button class="btn btn-outline" @click="selecionarPasta('/dados/empresa')">
+                    <i class="fas fa-folder"></i> /dados/empresa
+                </button>
+                <button class="btn btn-outline" @click="selecionarPasta('./downloads')">
+                    <i class="fas fa-folder"></i> ./downloads (pasta local)
+                </button>
+            </div>
+            
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button class="btn btn-primary" @click="criarNovaPasta">
+                    <i class="fas fa-folder-plus"></i> Criar Nova Pasta
+                </button>
+                <button class="btn btn-outline" @click="mostrarSeletorPastas = false">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
@@ -739,12 +960,12 @@ const firestore = firebase.firestore();
 
 // ==================== INDEXEDDB ====================
 const DB_NAME = 'BlingIntelligenceDB';
-const STORES = ['clientes', 'produtos', 'vendas', 'compras', 'fornecedores', 'config'];
+const STORES = ['clientes', 'produtos', 'vendas', 'compras', 'fornecedores', 'config', 'exportConfig'];
 
 class IndexedDBManager {
     async openDB() {
         return new Promise((resolve, reject) => {
-            const req = indexedDB.open(DB_NAME, 2);
+            const req = indexedDB.open(DB_NAME, 3);
             req.onupgradeneeded = (ev) => {
                 const db = ev.target.result;
                 STORES.forEach(store => {
@@ -778,6 +999,16 @@ class IndexedDBManager {
         return tx.complete;
     }
 
+    async get(store, id) {
+        const db = await this.openDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(store, 'readonly');
+            const req = tx.objectStore(store).get(id);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+        });
+    }
+
     async clear(store) {
         const db = await this.openDB();
         const tx = db.transaction(store, 'readwrite');
@@ -800,6 +1031,17 @@ new Vue({
         aba: 'dashboard',
         abaDados: 'clientes',
         
+        // Formato de exportação (JSON como padrão)
+        formatoExportacao: 'json',
+        
+        // Configuração de exportação
+        exportConfig: {
+            basePath: '/exports/bling-data',
+            organizacao: 'data',
+            incluirMetadados: 'sim',
+            nomeArquivo: '{modulo}_{data}'
+        },
+        
         blingConfig: {
             apiKey: '',
             accessToken: '',
@@ -812,6 +1054,8 @@ new Vue({
         erroBling: '',
         resultadoImportacao: [],
         mostrarModalSimulacao: false,
+        mostrarSeletorPastas: false,
+        exportacaoTesteResultado: '',
         
         db: {
             clientes: [],
@@ -859,6 +1103,7 @@ new Vue({
                 };
 
                 await this.carregarDadosLocais();
+                await this.carregarConfiguracoes();
                 
             } catch (error) {
                 console.error('Erro login:', error);
@@ -875,17 +1120,54 @@ new Vue({
             });
         },
 
+        // ========== CONFIGURAÇÕES ==========
+        async carregarConfiguracoes() {
+            // Carregar configuração de exportação
+            const exportConfig = await dbManager.get('exportConfig', 'exportConfig');
+            if (exportConfig) {
+                this.exportConfig = exportConfig;
+            }
+        },
+
+        async salvarConfiguracaoExportacao() {
+            await dbManager.put('exportConfig', { ...this.exportConfig, id: 'exportConfig' });
+            this.exportacaoTesteResultado = '✅ Configuração salva com sucesso!';
+            setTimeout(() => { this.exportacaoTesteResultado = ''; }, 3000);
+        },
+
+        abrirSeletorPastas() {
+            this.mostrarSeletorPastas = true;
+        },
+
+        selecionarPasta(pasta) {
+            this.exportConfig.basePath = pasta;
+            this.mostrarSeletorPastas = false;
+        },
+
+        criarNovaPasta() {
+            const novaPasta = prompt('Digite o nome da nova pasta:', 'meus-dados');
+            if (novaPasta) {
+                this.exportConfig.basePath = `/exports/${novaPasta}`;
+                this.mostrarSeletorPastas = false;
+            }
+        },
+
+        testarExportacao() {
+            this.exportacaoTesteResultado = `✅ Teste realizado: arquivo salvo em ${this.exportConfig.basePath}/${new Date().toISOString().split('T')[0]}/teste.json`;
+            setTimeout(() => { this.exportacaoTesteResultado = ''; }, 3000);
+        },
+
         // ========== DADOS LOCAIS ==========
         async carregarDadosLocais() {
             console.log('🔄 Carregando dados do IndexedDB...');
             for (const store of STORES) {
-                if (store !== 'config') {
+                if (store !== 'config' && store !== 'exportConfig') {
                     this.db[store] = await dbManager.getAll(store);
                     console.log(`📊 ${store}:`, this.db[store].length, 'registros');
                 }
             }
             
-            // Carregar configuração
+            // Carregar configuração do Bling
             const config = await dbManager.getAll('config');
             if (config.length) {
                 const savedConfig = config.find(c => c.id === 'blingConfig');
@@ -986,7 +1268,7 @@ new Vue({
             try {
                 // Limpar dados existentes primeiro
                 for (const store of STORES) {
-                    if (store !== 'config') {
+                    if (store !== 'config' && store !== 'exportConfig') {
                         await dbManager.clear(store);
                         console.log(`🗑️ Limpando ${store}`);
                     }
@@ -1076,7 +1358,7 @@ new Vue({
         async limparTodosDados() {
             if (confirm('Tem certeza que deseja limpar todos os dados?')) {
                 for (const store of STORES) {
-                    if (store !== 'config') {
+                    if (store !== 'config' && store !== 'exportConfig') {
                         await dbManager.clear(store);
                     }
                 }
@@ -1085,23 +1367,161 @@ new Vue({
             }
         },
 
-        // ========== EXPORTAÇÃO ==========
-        exportarCSV(modulo) {
+        // ========== EXPORTAÇÃO COM CONFIGURAÇÃO DE PASTA ==========
+        gerarNomeArquivo(modulo) {
+            const data = new Date().toISOString().split('T')[0];
+            const timestamp = Date.now();
+            let nome = this.exportConfig.nomeArquivo
+                .replace('{modulo}', modulo)
+                .replace('{data}', data)
+                .replace('{timestamp}', timestamp)
+                .replace('{contador}', '1');
+            
+            // Garantir extensão correta
+            if (this.formatoExportacao === 'json' && !nome.endsWith('.json')) nome += '.json';
+            if (this.formatoExportacao === 'csv' && !nome.endsWith('.csv')) nome += '.csv';
+            
+            return nome;
+        },
+
+        gerarCaminhoCompleto(modulo) {
+            const data = new Date().toISOString().split('T')[0];
+            let caminho = this.exportConfig.basePath;
+            
+            if (this.exportConfig.organizacao === 'data') {
+                caminho += `/${data}`;
+            } else if (this.exportConfig.organizacao === 'modulo') {
+                caminho += `/${modulo}`;
+            }
+            
+            return caminho;
+        },
+
+        async exportarDados(modulo) {
             const data = this.db[modulo];
             if (!data.length) {
                 alert('Nenhum dado para exportar');
                 return;
             }
 
+            const caminho = this.gerarCaminhoCompleto(modulo);
+            const nomeArquivo = this.gerarNomeArquivo(modulo);
+            
+            let dadosParaExportar = data;
+            if (this.exportConfig.incluirMetadados === 'sim') {
+                dadosParaExportar = {
+                    metadados: {
+                        modulo: modulo,
+                        dataExportacao: new Date().toISOString(),
+                        totalRegistros: data.length,
+                        usuario: this.usuarioLogado?.nome
+                    },
+                    dados: data
+                };
+            }
+
+            if (this.formatoExportacao === 'json') {
+                this.exportarJSON(dadosParaExportar, nomeArquivo);
+            } else if (this.formatoExportacao === 'csv') {
+                this.exportarCSV(modulo, data, nomeArquivo);
+            } else if (this.formatoExportacao === 'zip') {
+                await this.exportarZIP(modulo, data, nomeArquivo);
+            }
+
+            // Mostrar mensagem com o caminho
+            this.exportacaoTesteResultado = `✅ Arquivo salvo em: ${caminho}/${nomeArquivo}`;
+            setTimeout(() => { this.exportacaoTesteResultado = ''; }, 3000);
+        },
+
+        async exportarTodosDados() {
+            const zip = new JSZip();
+            const data = new Date().toISOString().split('T')[0];
+            const pastaRaiz = this.exportConfig.basePath.replace('/', '');
+            
+            for (const [modulo, dados] of Object.entries(this.db)) {
+                if (dados.length) {
+                    let dadosParaExportar = dados;
+                    if (this.exportConfig.incluirMetadados === 'sim') {
+                        dadosParaExportar = {
+                            metadados: {
+                                modulo: modulo,
+                                dataExportacao: new Date().toISOString(),
+                                totalRegistros: dados.length,
+                                usuario: this.usuarioLogado?.nome
+                            },
+                            dados: dados
+                        };
+                    }
+
+                    if (this.formatoExportacao === 'json') {
+                        const nomeArquivo = this.gerarNomeArquivo(modulo);
+                        const caminho = this.exportConfig.organizacao === 'data' ? `${data}/${nomeArquivo}` : nomeArquivo;
+                        zip.file(caminho, JSON.stringify(dadosParaExportar, null, 2));
+                    } else if (this.formatoExportacao === 'csv') {
+                        const nomeArquivo = this.gerarNomeArquivo(modulo);
+                        const csv = this.gerarCSV(dados);
+                        const caminho = this.exportConfig.organizacao === 'data' ? `${data}/${nomeArquivo}` : nomeArquivo;
+                        zip.file(caminho, '\uFEFF' + csv);
+                    }
+                }
+            }
+
+            if (this.formatoExportacao === 'zip') {
+                const conteudo = await zip.generateAsync({ type: 'blob' });
+                saveAs(conteudo, `todos_dados_${data}.zip`);
+            } else {
+                // Para JSON e CSV, baixar zip com todos os arquivos
+                const conteudo = await zip.generateAsync({ type: 'blob' });
+                saveAs(conteudo, `exports_${data}.zip`);
+            }
+
+            this.exportacaoTesteResultado = `✅ Todos os dados exportados para ${this.exportConfig.basePath}`;
+            setTimeout(() => { this.exportacaoTesteResultado = ''; }, 3000);
+        },
+
+        exportarJSON(data, nomeArquivo) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            saveAs(blob, nomeArquivo);
+        },
+
+        gerarCSV(data) {
+            if (!data.length) return '';
             const headers = Object.keys(data[0]).join(';');
             const rows = data.map(obj => Object.values(obj).map(v => `"${v}"`).join(';'));
-            const csv = [headers, ...rows].join('\n');
+            return [headers, ...rows].join('\n');
+        },
 
+        exportarCSV(modulo, data, nomeArquivo) {
+            const csv = this.gerarCSV(data);
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `${modulo}_${new Date().toISOString().split('T')[0]}.csv`;
-            link.click();
+            saveAs(blob, nomeArquivo);
+        },
+
+        async exportarZIP(modulo, data, nomeArquivo) {
+            const zip = new JSZip();
+            const nomeBase = nomeArquivo.replace('.zip', '');
+            
+            if (this.exportConfig.incluirMetadados === 'sim') {
+                const dadosComMetadados = {
+                    metadados: {
+                        modulo: modulo,
+                        dataExportacao: new Date().toISOString(),
+                        totalRegistros: data.length,
+                        usuario: this.usuarioLogado?.nome
+                    },
+                    dados: data
+                };
+                zip.file(`${nomeBase}.json`, JSON.stringify(dadosComMetadados, null, 2));
+            } else {
+                zip.file(`${nomeBase}.json`, JSON.stringify(data, null, 2));
+            }
+            
+            // Adicionar CSV também
+            const csv = this.gerarCSV(data);
+            zip.file(`${nomeBase}.csv`, '\uFEFF' + csv);
+            
+            const conteudo = await zip.generateAsync({ type: 'blob' });
+            saveAs(conteudo, `${nomeBase}.zip`);
         }
     },
 
@@ -1119,6 +1539,7 @@ new Vue({
                     perfil: userDoc.data()?.perfil || 'user'
                 };
                 await this.carregarDadosLocais();
+                await this.carregarConfiguracoes();
             }
         });
 
