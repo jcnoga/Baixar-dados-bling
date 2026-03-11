@@ -15,12 +15,505 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
     
-    <!-- CSS -->
-    <link rel="stylesheet" href="styles.css">
-    
     <!-- Font Awesome e Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f7ff;
+            color: #1e293b;
+            padding: 20px;
+        }
+        .app-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 48px;
+            box-shadow: 0 30px 60px -20px rgba(0,40,80,0.3);
+            overflow: hidden;
+            min-height: 95vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .app-header {
+            padding: 20px 35px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fcff 100%);
+            border-bottom: 1px solid rgba(37,99,235,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            box-shadow: 0 10px 20px -5px rgba(37,99,235,0.3);
+        }
+        .logo-text h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #1e293b, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .badge-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .badge {
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-firebase { background: #ffca28; color: #1e293b; }
+        .badge-bling { background: #10b981; color: white; }
+        .badge-simulado { background: #f59e0b; color: white; animation: pulse 2s infinite; }
+        .badge-conectado { background: #10b981; color: white; }
+        .badge-desconectado { background: #ef4444; color: white; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+        
+        /* Botões */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 40px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white;
+        }
+        .btn-primary:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 20px -5px rgba(37,99,235,0.4); 
+        }
+        .btn-success { 
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        .btn-warning { 
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        .btn-danger { 
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        .btn-outline { 
+            background: white;
+            border: 2px solid #e2e8f0;
+            color: #475569;
+        }
+        .btn-outline:hover { 
+            border-color: #2563eb; 
+            color: #2563eb; 
+        }
+        .btn-sm { 
+            padding: 8px 16px; 
+            font-size: 0.85rem; 
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Login Screen */
+        .login-screen {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        .login-screen::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
+            animation: rotate 30s linear infinite;
+        }
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .login-card {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 60px;
+            padding: 50px 40px;
+            width: 450px;
+            box-shadow: 0 40px 60px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
+        }
+        .login-card h2 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+            text-align: center;
+            color: #1e293b;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            min-height: 800px;
+        }
+        .sidebar {
+            width: 300px;
+            background: linear-gradient(180deg, #f8fcff 0%, #f1f7fe 100%);
+            border-right: 1px solid rgba(37,99,235,0.1);
+            padding: 30px 0;
+        }
+        .sidebar-item {
+            padding: 15px 25px;
+            margin: 5px 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #475569;
+            cursor: pointer;
+            border-radius: 40px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .sidebar-item i { 
+            width: 24px; 
+            font-size: 1.2rem; 
+        }
+        .sidebar-item:hover { 
+            background: rgba(37,99,235,0.1); 
+            color: #2563eb; 
+        }
+        .sidebar-item.active {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white;
+            box-shadow: 0 10px 20px -5px rgba(37,99,235,0.4);
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 35px;
+            background: #ffffff;
+            overflow-y: auto;
+        }
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #1e293b, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #ffffff, #f8fcff);
+            border-radius: 30px;
+            padding: 25px;
+            border: 1px solid rgba(37,99,235,0.1);
+            transition: all 0.3s;
+        }
+        .stat-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 20px 30px -10px rgba(37,99,235,0.2); 
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #2563eb;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 1rem;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Config Card */
+        .config-card {
+            background: linear-gradient(135deg, #ffffff, #f8fcff);
+            border-radius: 30px;
+            padding: 30px;
+            border: 1px solid rgba(37,99,235,0.1);
+            margin-bottom: 25px;
+        }
+        .config-card h3 {
+            margin-bottom: 20px;
+            color: #1e293b;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #334155;
+        }
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 12px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 30px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .input-group input:focus,
+        .input-group select:focus {
+            border-color: #2563eb;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(37,99,235,0.1);
+        }
+
+        /* Messages */
+        .success-message,
+        .error-message,
+        .warning-message {
+            padding: 15px 20px;
+            border-radius: 30px;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+        .success-message {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            color: #065f46;
+            border-left: 5px solid #10b981;
+        }
+        .error-message {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            color: #991b1b;
+            border-left: 5px solid #ef4444;
+        }
+        .warning-message {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #92400e;
+            border-left: 5px solid #f59e0b;
+        }
+
+        /* Log Panel */
+        .log-panel {
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            padding: 20px;
+            border-radius: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+            background: white;
+            border-radius: 30px;
+            border: 1px solid #e2e8f0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #f8fafc;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #334155;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #475569;
+        }
+        tr:hover td { 
+            background: #f8fafc; 
+        }
+
+        /* Export Bar */
+        .export-bar {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 40px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .export-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .export-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: white;
+            border-radius: 40px;
+            border: 2px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .export-option.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        .export-option input[type="radio"] {
+            accent-color: #2563eb;
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 60px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-icon {
+            font-size: 50px;
+            color: #f59e0b;
+            margin-bottom: 20px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        /* Tab Menu */
+        .tab-menu {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* Utilities */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .data-counter {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            margin-left: auto;
+        }
+        .help-text {
+            color: #64748b;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
 <div class="app-container" id="app">
@@ -84,23 +577,15 @@
                 <i class="fas fa-chart-pie"></i> Dashboard
                 <span class="data-counter">{{ totalRegistros }}</span>
             </div>
-            <div class="sidebar-item" :class="{active:aba==='marcadores'}" @click="aba='marcadores'">
-                <i class="fas fa-tags"></i> Marcadores CRM
-                <span class="data-counter">15</span>
-            </div>
             <div class="sidebar-item" :class="{active:aba==='bling'}" @click="aba='bling'">
                 <i class="fas fa-cloud"></i> Integração Bling
             </div>
             <div class="sidebar-item" :class="{active:aba==='simulados'}" @click="aba='simulados'">
                 <i class="fas fa-flask"></i> Dados Simulados
-                <span class="data-counter" v-if="blingConfig.modoSimulado">10+</span>
             </div>
             <div class="sidebar-item" :class="{active:aba==='dados'}" @click="aba='dados'">
                 <i class="fas fa-database"></i> Visualizar Dados
                 <span class="data-counter">{{ totalRegistros }}</span>
-            </div>
-            <div class="sidebar-item" v-if="usuarioLogado.perfil === 'owner'" :class="{active:aba==='exportConfig'}" @click="aba='exportConfig'">
-                <i class="fas fa-folder-open"></i> Config. Exportação
             </div>
             <div class="sidebar-item" v-if="usuarioLogado.perfil === 'owner'" :class="{active:aba==='config'}" @click="aba='config'">
                 <i class="fas fa-cog"></i> Configurações
@@ -131,35 +616,9 @@
                     </div>
                 </div>
                 
-                <!-- Resumo dos Marcadores -->
-                <div class="config-card">
-                    <h3>📌 Resumo dos Marcadores</h3>
-                    <div class="marcadores-resumo">
-                        <div>
-                            <div class="resumo-valor">{{ marcadores.clientes.inativos.length }}</div>
-                            <div class="resumo-label">Clientes Inativos</div>
-                        </div>
-                        <div>
-                            <div class="resumo-valor">{{ marcadores.clientes.vip.length }}</div>
-                            <div class="resumo-label">Clientes VIP</div>
-                        </div>
-                        <div>
-                            <div class="resumo-valor">{{ marcadores.produtos.campeoes.length }}</div>
-                            <div class="resumo-label">Produtos Campeões</div>
-                        </div>
-                        <div>
-                            <div class="resumo-valor">{{ marcadores.estoque.baixo.length }}</div>
-                            <div class="resumo-label">Estoque Baixo</div>
-                        </div>
-                    </div>
-                    <button class="btn btn-info btn-sm" @click="aba='marcadores'">
-                        <i class="fas fa-tags"></i> Ver todos os 15 marcadores
-                    </button>
-                </div>
-                
                 <!-- Barra de exportação -->
                 <div class="export-bar">
-                    <div class="export-label">Exportar dados completos:</div>
+                    <div style="flex:1; font-weight: 600;">Exportar dados:</div>
                     <div class="export-options">
                         <label class="export-option" :class="{active: formatoExportacao === 'json'}">
                             <input type="radio" value="json" v-model="formatoExportacao"> JSON
@@ -167,111 +626,9 @@
                         <label class="export-option" :class="{active: formatoExportacao === 'csv'}">
                             <input type="radio" value="csv" v-model="formatoExportacao"> CSV
                         </label>
-                        <label class="export-option" :class="{active: formatoExportacao === 'zip'}">
-                            <input type="radio" value="zip" v-model="formatoExportacao"> ZIP
-                        </label>
                     </div>
                     <button class="btn btn-primary" @click="exportarTodosDados">
-                        <i class="fas fa-download"></i> Exportar
-                    </button>
-                </div>
-            </div>
-
-            <!-- Marcadores CRM -->
-            <div v-if="aba==='marcadores'">
-                <h2 class="section-title">🏷️ Marcadores de CRM e Estoque</h2>
-                
-                <!-- Segmentação de Clientes -->
-                <h3 class="marcadores-categoria">👥 Segmentação de Clientes</h3>
-                <div class="marcadores-grid">
-                    <!-- Cliente Inativo -->
-                    <div class="marcador-card">
-                        <div class="marcador-badge badge-vermelho">1</div>
-                        <div class="marcador-header">
-                            <div class="marcador-icon clientes"><i class="fas fa-user-clock"></i></div>
-                            <div>
-                                <div class="marcador-titulo">Cliente Inativo</div>
-                                <div class="marcador-contador">{{ marcadores.clientes.inativos.length }} clientes</div>
-                            </div>
-                        </div>
-                        <div class="marcador-descricao">
-                            Clientes sem compras nos últimos 90 dias. Oportunidade de reativação.
-                        </div>
-                        <ul class="marcador-lista">
-                            <li v-for="cliente in marcadores.clientes.inativos.slice(0,3)" :key="cliente.id">
-                                <i class="fas fa-user"></i> {{ cliente.nome }}
-                                <span class="marcador-contador">{{ formatDate(cliente.ultimaCompra) }}</span>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!-- Cliente VIP -->
-                    <div class="marcador-card">
-                        <div class="marcador-badge badge-azul">2</div>
-                        <div class="marcador-header">
-                            <div class="marcador-icon clientes"><i class="fas fa-crown"></i></div>
-                            <div>
-                                <div class="marcador-titulo">Cliente VIP</div>
-                                <div class="marcador-contador">{{ marcadores.clientes.vip.length }} clientes</div>
-                            </div>
-                        </div>
-                        <div class="marcador-descricao">
-                            Compras acumuladas acima de R$ 5.000 ou ticket médio elevado.
-                        </div>
-                        <ul class="marcador-lista">
-                            <li v-for="cliente in marcadores.clientes.vip.slice(0,3)" :key="cliente.id">
-                                <i class="fas fa-star"></i> {{ cliente.nome }}
-                                <span class="marcador-contador">{{ formatMoney(cliente.totalCompras) }}</span>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!-- Cliente Frequente -->
-                    <div class="marcador-card">
-                        <div class="marcador-badge badge-verde">3</div>
-                        <div class="marcador-header">
-                            <div class="marcador-icon clientes"><i class="fas fa-calendar-check"></i></div>
-                            <div>
-                                <div class="marcador-titulo">Cliente Frequente</div>
-                                <div class="marcador-contador">{{ marcadores.clientes.frequentes.length }} clientes</div>
-                            </div>
-                        </div>
-                        <div class="marcador-descricao">
-                            Intervalo médio entre compras inferior a 30 dias.
-                        </div>
-                        <ul class="marcador-lista">
-                            <li v-for="cliente in marcadores.clientes.frequentes.slice(0,3)" :key="cliente.id">
-                                <i class="fas fa-shopping-bag"></i> {{ cliente.nome }}
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!-- Cliente em Queda -->
-                    <div class="marcador-card">
-                        <div class="marcador-badge badge-amarelo">4</div>
-                        <div class="marcador-header">
-                            <div class="marcador-icon clientes"><i class="fas fa-chart-line"></i></div>
-                            <div>
-                                <div class="marcador-titulo">Cliente em Queda</div>
-                                <div class="marcador-contador">{{ marcadores.clientes.emQueda.length }} clientes</div>
-                            </div>
-                        </div>
-                        <div class="marcador-descricao">
-                            Redução significativa no ritmo de compras nos últimos 60 dias.
-                        </div>
-                        <ul class="marcador-lista">
-                            <li v-for="cliente in marcadores.clientes.emQueda.slice(0,3)" :key="cliente.id">
-                                <i class="fas fa-arrow-down"></i> {{ cliente.nome }}
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- Botão para exportar marcadores -->
-                <div class="export-bar">
-                    <div class="export-label">Exportar análise de marcadores:</div>
-                    <button class="btn btn-primary" @click="exportarMarcadores">
-                        <i class="fas fa-download"></i> Exportar Relatório
+                        <i class="fas fa-download"></i> Exportar Tudo
                     </button>
                 </div>
             </div>
@@ -293,24 +650,6 @@
                         <input type="text" v-model="blingConfig.accessToken" placeholder="Digite seu Access Token">
                     </div>
 
-                    <div class="import-options">
-                        <div class="import-type">
-                            <label class="radio-option">
-                                <input type="radio" value="total" v-model="tipoImportacao">
-                                <span>Importação Total (todos os dados)</span>
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" value="incremental" v-model="tipoImportacao">
-                                <span>Importação Incremental (apenas novos/alterados)</span>
-                            </label>
-                        </div>
-                        
-                        <div class="info-box" v-if="tipoImportacao === 'incremental'">
-                            <i class="fas fa-info-circle"></i>
-                            Última sincronização: {{ ultimaSyncFormatada || 'Nunca' }}
-                        </div>
-                    </div>
-
                     <div class="button-group">
                         <button class="btn btn-primary" @click="testarConexaoBling" :disabled="testandoBling">
                             <span v-if="testandoBling" class="spinner"></span>
@@ -319,8 +658,7 @@
                         
                         <button class="btn btn-success" @click="importarDadosBling" :disabled="importandoBling || !blingConectado">
                             <span v-if="importandoBling" class="spinner"></span>
-                            <i class="fas fa-download"></i> 
-                            {{ tipoImportacao === 'total' ? 'Importar Todos' : 'Importar Incremental' }}
+                            <i class="fas fa-download"></i> Importar Dados
                         </button>
                     </div>
 
@@ -355,9 +693,9 @@
                     </p>
                     
                     <div class="button-group">
-                        <button class="btn btn-warning" @click="gerarDadosSimuladosCompletos" :disabled="gerandoDados">
+                        <button class="btn btn-warning" @click="abrirModalSimulacao" :disabled="gerandoDados">
                             <span v-if="gerandoDados" class="spinner"></span>
-                            <i class="fas fa-flask"></i> Gerar 10 Registros por Módulo
+                            <i class="fas fa-flask"></i> Gerar Dados Simulados
                         </button>
                         
                         <button class="btn btn-danger" @click="limparTodosDados" :disabled="gerandoDados">
@@ -399,7 +737,7 @@
                 </div>
 
                 <div class="export-bar">
-                    <div class="export-label">Exportar dados de {{ abaDados }}:</div>
+                    <div style="flex:1;">Exportar dados de {{ abaDados }}:</div>
                     <div class="export-options">
                         <label class="export-option" :class="{active: formatoExportacao === 'json'}">
                             <input type="radio" value="json" v-model="formatoExportacao"> JSON
@@ -418,7 +756,7 @@
                     <table>
                         <thead>
                             <tr v-if="abaDados === 'clientes'">
-                                <th>ID</th><th>Nome</th><th>Email</th><th>Cidade</th>
+                                <th>ID</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Cidade</th>
                             </tr>
                             <tr v-if="abaDados === 'produtos'">
                                 <th>ID</th><th>Nome</th><th>SKU</th><th>Preço</th><th>Estoque</th>
@@ -429,62 +767,24 @@
                         </thead>
                         <tbody>
                             <tr v-for="item in db[abaDados]" :key="item.id">
-                                <td>{{ item.id.substring(0,8) }}...</td>
+                                <td>{{ item.id }}</td>
                                 <td>{{ item.nome || item.cliente }}</td>
                                 <td>{{ item.email || item.sku || formatMoney(item.valor) }}</td>
-                                <td>{{ item.cidade || formatMoney(item.preco) || formatDate(item.dataVenda) }}</td>
-                                <td v-if="abaDados !== 'clientes'">{{ item.estoqueAtual || item.status }}</td>
+                                <td>{{ item.telefone || formatMoney(item.preco) || formatDate(item.dataVenda) }}</td>
+                                <td>{{ item.cidade || item.estoqueAtual || item.status }}</td>
+                            </tr>
+                            <tr v-if="!db[abaDados].length">
+                                <td colspan="5" style="text-align: center; padding: 40px;">
+                                    <i class="fas fa-database" style="font-size: 40px; color: #cbd5e1; margin-bottom: 10px;"></i><br>
+                                    Nenhum dado encontrado.
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Configuração de Exportação -->
-            <div v-if="aba==='exportConfig' && usuarioLogado.perfil === 'owner'">
-                <h2 class="section-title">📂 Configuração de Exportação</h2>
-                
-                <div class="config-card">
-                    <h3>Diretório de Exportação</h3>
-                    
-                    <div class="input-group">
-                        <label>Estrutura de Pastas</label>
-                        <div class="path-selector">
-                            <input type="text" v-model="exportConfig.basePath" placeholder="/exports/bling-data">
-                            <button class="btn btn-sm btn-outline" @click="abrirSeletorPastas">
-                                <i class="fas fa-folder-open"></i> Selecionar
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label>Organização dos Arquivos</label>
-                        <select v-model="exportConfig.organizacao">
-                            <option value="data">Por data (YYYY-MM-DD/modulo.json)</option>
-                            <option value="modulo">Por módulo (modulo/YYYY-MM-DD.json)</option>
-                        </select>
-                    </div>
-
-                    <div class="input-group">
-                        <label>Incluir metadados</label>
-                        <select v-model="exportConfig.incluirMetadados">
-                            <option value="sim">Sim</option>
-                            <option value="nao">Não</option>
-                        </select>
-                    </div>
-
-                    <div class="button-group">
-                        <button class="btn btn-primary" @click="salvarConfiguracaoExportacao">
-                            <i class="fas fa-save"></i> Salvar
-                        </button>
-                        <button class="btn btn-outline" @click="testarExportacao">
-                            <i class="fas fa-play"></i> Testar
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Configurações Gerais -->
+            <!-- Configurações -->
             <div v-if="aba==='config' && usuarioLogado.perfil === 'owner'">
                 <h2 class="section-title">⚙️ Configurações</h2>
                 
@@ -499,21 +799,416 @@
         </div>
     </div>
 
-    <!-- Modais -->
-    <div v-if="mostrarModalSimulacao" class="modal-overlay">
+    <!-- Modal de Confirmação -->
+    <div v-if="mostrarModalSimulacao" class="modal-overlay" @click.self="fecharModalSimulacao">
         <div class="modal-content">
-            <i class="fas fa-flask modal-icon"></i>
+            <div class="modal-icon"><i class="fas fa-flask"></i></div>
             <h2>Gerar Dados Simulados?</h2>
-            <p>Serão gerados 10 registros para cada módulo.</p>
+            <p>Serão gerados 10 clientes, 10 produtos e 10 vendas para teste.</p>
             <div class="modal-buttons">
-                <button class="btn btn-success" @click="confirmarDadosSimulados">Sim, gerar</button>
-                <button class="btn btn-outline" @click="mostrarModalSimulacao = false">Cancelar</button>
+                <button class="btn btn-success" @click="gerarDadosSimulados" :disabled="gerandoDados">
+                    <span v-if="gerandoDados" class="spinner"></span>
+                    <span v-else><i class="fas fa-check"></i> Sim, gerar</span>
+                </button>
+                <button class="btn btn-outline" @click="fecharModalSimulacao" :disabled="gerandoDados">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- TypeScript -->
-<script type="module" src="app.ts"></script>
+<script>
+// ==================== FIREBASE CONFIG ====================
+const firebaseConfig = {
+    apiKey: "AIzaSyCWr1rhmFYX2naAqWUaIb52oy6-6FJxhe8",
+    authDomain: "dados-bling.firebaseapp.com",
+    projectId: "dados-bling",
+    storageBucket: "dados-bling.firebasestorage.app",
+    messagingSenderId: "95224193291",
+    appId: "1:95224193291:web:c61f0f2c5b9776ab9c420e",
+    measurementId: "G-BWWH69VXXL"
+};
+
+// Inicializar Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const firestore = firebase.firestore();
+
+// ==================== INDEXEDDB MANAGER ====================
+const DB_NAME = 'BlingIntelligenceDB';
+const STORES = ['clientes', 'produtos', 'vendas', 'compras', 'fornecedores', 'config'];
+
+class IndexedDBManager {
+    async openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = (ev) => {
+                const db = ev.target.result;
+                STORES.forEach(store => {
+                    if (!db.objectStoreNames.contains(store)) {
+                        db.createObjectStore(store, { keyPath: 'id' });
+                    }
+                });
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async getAll(store) {
+        const db = await this.openDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(store, 'readonly');
+            const req = tx.objectStore(store).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        });
+    }
+
+    async put(store, data) {
+        const db = await this.openDB();
+        const tx = db.transaction(store, 'readwrite');
+        tx.objectStore(store).put(data);
+        return new Promise((resolve) => {
+            tx.oncomplete = () => resolve();
+        });
+    }
+
+    async clear(store) {
+        const db = await this.openDB();
+        const tx = db.transaction(store, 'readwrite');
+        tx.objectStore(store).clear();
+        return new Promise((resolve) => {
+            tx.oncomplete = () => resolve();
+        });
+    }
+}
+
+const dbManager = new IndexedDBManager();
+
+// ==================== VUE APP ====================
+new Vue({
+    el: '#app',
+    data: {
+        usuarioLogado: null,
+        loginEmail: '',
+        loginSenha: '',
+        loading: false,
+        erroLogin: '',
+        aba: 'dashboard',
+        abaDados: 'clientes',
+        
+        formatoExportacao: 'json',
+        
+        blingConfig: {
+            apiKey: '',
+            accessToken: '',
+            modoSimulado: false
+        },
+        
+        blingConectado: false,
+        testandoBling: false,
+        importandoBling: false,
+        gerandoDados: false,
+        erroBling: '',
+        resultadoImportacao: [],
+        mostrarModalSimulacao: false,
+        
+        db: {
+            clientes: [],
+            produtos: [],
+            vendas: [],
+            compras: [],
+            fornecedores: []
+        }
+    },
+
+    computed: {
+        totalRegistros() {
+            return this.db.clientes.length + this.db.produtos.length + this.db.vendas.length;
+        },
+        totalVendas() {
+            return this.db.vendas.reduce((acc, v) => acc + (parseFloat(v.valor) || 0), 0);
+        }
+    },
+
+    methods: {
+        formatNumber(v) {
+            return (v || 0).toLocaleString('pt-BR');
+        },
+        
+        formatMoney(v) {
+            if (!v) return 'R$ 0,00';
+            const valor = parseFloat(v);
+            if (isNaN(valor)) return 'R$ 0,00';
+            return valor.toLocaleString('pt-BR', { 
+                style: 'currency', 
+                currency: 'BRL',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        },
+        
+        formatDate(date) {
+            if (!date) return '';
+            if (date.includes('T')) {
+                return date.split('T')[0].split('-').reverse().join('/');
+            }
+            return date;
+        },
+
+        async fazerLogin() {
+            this.loading = true;
+            this.erroLogin = '';
+
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(this.loginEmail, this.loginSenha);
+                const userDoc = await firestore.collection('users').doc(userCredential.user.uid).get();
+                
+                this.usuarioLogado = {
+                    uid: userCredential.user.uid,
+                    nome: userDoc.data()?.nome || userCredential.user.email.split('@')[0],
+                    email: userCredential.user.email,
+                    perfil: userDoc.data()?.perfil || 'user'
+                };
+
+                await this.carregarDadosLocais();
+                
+            } catch (error) {
+                this.erroLogin = 'E-mail ou senha inválidos';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        logout() {
+            auth.signOut().then(() => {
+                this.usuarioLogado = null;
+                this.aba = 'dashboard';
+            });
+        },
+
+        async carregarDadosLocais() {
+            for (const store of STORES) {
+                if (store !== 'config') {
+                    this.db[store] = await dbManager.getAll(store);
+                }
+            }
+            
+            const configs = await dbManager.getAll('config');
+            if (configs.length) {
+                const savedConfig = configs.find(c => c.id === 'blingConfig');
+                if (savedConfig) {
+                    this.blingConfig = savedConfig;
+                }
+            }
+        },
+
+        async testarConexaoBling() {
+            this.testandoBling = true;
+            this.erroBling = '';
+            this.resultadoImportacao = ['🔄 Testando conexão...'];
+
+            try {
+                const response = await fetch('https://www.bling.com.br/Api/v3/produtos?limite=1', {
+                    headers: {
+                        'Authorization': `Bearer ${this.blingConfig.accessToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    this.blingConectado = true;
+                    this.blingConfig.modoSimulado = false;
+                    this.resultadoImportacao.push('✅ Conectado com sucesso!');
+                    await dbManager.put('config', { ...this.blingConfig, id: 'blingConfig' });
+                } else {
+                    throw new Error('Erro na conexão');
+                }
+            } catch (error) {
+                this.blingConectado = false;
+                this.erroBling = 'Não foi possível conectar ao Bling';
+                this.resultadoImportacao.push('❌ Falha na conexão');
+            } finally {
+                this.testandoBling = false;
+            }
+        },
+
+        async importarDadosBling() {
+            if (!this.blingConectado) {
+                alert('Conecte-se ao Bling primeiro');
+                return;
+            }
+
+            this.importandoBling = true;
+            this.resultadoImportacao = ['🔄 Iniciando importação...'];
+
+            try {
+                const modulos = ['clientes', 'produtos', 'vendas'];
+                
+                for (const modulo of modulos) {
+                    this.resultadoImportacao.push(`📦 Importando ${modulo}...`);
+                    const response = await fetch(`https://www.bling.com.br/Api/v3/${modulo}`, {
+                        headers: { 'Authorization': `Bearer ${this.blingConfig.accessToken}` }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const items = data.data || [];
+                        
+                        for (const item of items) {
+                            if (item.id) {
+                                await dbManager.put(modulo, { ...item, id: item.id.toString() });
+                            }
+                        }
+                        
+                        this.resultadoImportacao.push(`✅ ${items.length} ${modulo} importados`);
+                    }
+                }
+
+                await this.carregarDadosLocais();
+                this.resultadoImportacao.push('🎉 Importação concluída!');
+                
+            } catch (error) {
+                this.resultadoImportacao.push(`❌ Erro: ${error.message}`);
+            } finally {
+                this.importandoBling = false;
+            }
+        },
+
+        abrirModalSimulacao() {
+            this.mostrarModalSimulacao = true;
+        },
+
+        fecharModalSimulacao() {
+            this.mostrarModalSimulacao = false;
+        },
+
+        async gerarDadosSimulados() {
+            this.fecharModalSimulacao();
+            this.gerandoDados = true;
+            this.resultadoImportacao = ['🧪 Gerando dados simulados...'];
+            
+            try {
+                for (const store of STORES) {
+                    if (store !== 'config') {
+                        await dbManager.clear(store);
+                    }
+                }
+
+                // Clientes
+                for (let i = 1; i <= 10; i++) {
+                    await dbManager.put('clientes', {
+                        id: `cli_${i}`,
+                        nome: `Cliente Simulado ${i}`,
+                        email: `cliente${i}@email.com`,
+                        telefone: `(11) 9${String(i).padStart(4, '0')}-${String(i).padStart(4, '0')}`,
+                        cidade: ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte'][Math.floor(Math.random() * 3)]
+                    });
+                }
+
+                // Produtos
+                for (let i = 1; i <= 10; i++) {
+                    await dbManager.put('produtos', {
+                        id: `prod_${i}`,
+                        nome: `Produto Simulado ${i}`,
+                        sku: `SKU${String(i).padStart(3, '0')}`,
+                        preco: Math.floor(Math.random() * 900) + 100,
+                        estoqueAtual: Math.floor(Math.random() * 200) + 10
+                    });
+                }
+
+                // Vendas
+                for (let i = 1; i <= 10; i++) {
+                    const dataVenda = new Date();
+                    dataVenda.setDate(dataVenda.getDate() - Math.floor(Math.random() * 120));
+                    await dbManager.put('vendas', {
+                        id: `venda_${i}`,
+                        cliente: `Cliente Simulado ${Math.ceil(Math.random() * 10)}`,
+                        valor: Math.floor(Math.random() * 5000) + 200,
+                        dataVenda: dataVenda.toISOString().split('T')[0],
+                        status: 'Concluído'
+                    });
+                }
+
+                await this.carregarDadosLocais();
+                this.blingConfig.modoSimulado = true;
+                await dbManager.put('config', { ...this.blingConfig, id: 'blingConfig' });
+                
+                this.resultadoImportacao.push('✅ Dados simulados gerados!');
+                this.aba = 'dados';
+                
+            } catch (error) {
+                this.resultadoImportacao.push(`❌ Erro: ${error.message}`);
+            } finally {
+                this.gerandoDados = false;
+            }
+        },
+
+        async limparTodosDados() {
+            if (confirm('Tem certeza que deseja limpar todos os dados?')) {
+                for (const store of STORES) {
+                    if (store !== 'config') {
+                        await dbManager.clear(store);
+                    }
+                }
+                await this.carregarDadosLocais();
+                this.resultadoImportacao = ['🗑️ Dados removidos'];
+            }
+        },
+
+        async exportarDados(modulo) {
+            const data = this.db[modulo];
+            if (!data.length) {
+                alert('Nenhum dado para exportar');
+                return;
+            }
+
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            saveAs(blob, `${modulo}_${new Date().toISOString().split('T')[0]}.json`);
+        },
+
+        async exportarTodosDados() {
+            const zip = new JSZip();
+            const data = new Date().toISOString().split('T')[0];
+            
+            for (const [modulo, dados] of Object.entries(this.db)) {
+                if (Array.isArray(dados) && dados.length) {
+                    zip.file(`${modulo}_${data}.json`, JSON.stringify(dados, null, 2));
+                }
+            }
+
+            const conteudo = await zip.generateAsync({ type: 'blob' });
+            saveAs(conteudo, `todos_dados_${data}.zip`);
+        }
+    },
+
+    async mounted() {
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                const userDoc = await firestore.collection('users').doc(user.uid).get();
+                this.usuarioLogado = {
+                    uid: user.uid,
+                    nome: userDoc.data()?.nome || user.email.split('@')[0],
+                    email: user.email,
+                    perfil: userDoc.data()?.perfil || 'user'
+                };
+                await this.carregarDadosLocais();
+            }
+        });
+
+        const configs = await dbManager.getAll('config');
+        if (configs.length) {
+            const savedConfig = configs.find(c => c.id === 'blingConfig');
+            if (savedConfig) {
+                this.blingConfig = savedConfig;
+            }
+        }
+    }
+});
+</script>
 </body>
 </html>
