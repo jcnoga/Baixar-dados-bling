@@ -64,7 +64,10 @@ const firebaseConfig = {
     measurementId: "G-BWWH69VXXL"
 };
 
-firebase.initializeApp(firebaseConfig);
+// Inicializar Firebase apenas se não estiver inicializado
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
 const firestore = firebase.firestore();
 
@@ -103,7 +106,9 @@ class IndexedDBManager {
         const db = await this.openDB();
         const tx = db.transaction(store, 'readwrite');
         tx.objectStore(store).put(data);
-        return tx.complete;
+        return new Promise((resolve) => {
+            tx.oncomplete = () => resolve();
+        });
     }
 
     async get(store: string, id: string): Promise<any> {
@@ -120,14 +125,18 @@ class IndexedDBManager {
         const db = await this.openDB();
         const tx = db.transaction(store, 'readwrite');
         tx.objectStore(store).delete(id);
-        return tx.complete;
+        return new Promise((resolve) => {
+            tx.oncomplete = () => resolve();
+        });
     }
 
     async clear(store: string): Promise<void> {
         const db = await this.openDB();
         const tx = db.transaction(store, 'readwrite');
         tx.objectStore(store).clear();
-        return tx.complete;
+        return new Promise((resolve) => {
+            tx.oncomplete = () => resolve();
+        });
     }
 }
 
@@ -151,6 +160,9 @@ new Vue({
         
         // Tipo de importação (total ou incremental)
         tipoImportacao: 'incremental',
+        
+        // Última sincronização
+        ultimaSync: null as string | null,
         
         // Configurações
         exportConfig: {
@@ -206,8 +218,7 @@ new Vue({
         },
         
         ultimaSyncFormatada(): string {
-            const ultimaSync = (this as any).ultimaSync;
-            return ultimaSync ? new Date(ultimaSync).toLocaleString('pt-BR') : 'Nunca';
+            return this.ultimaSync ? new Date(this.ultimaSync).toLocaleString('pt-BR') : 'Nunca';
         }
     },
 
@@ -280,7 +291,6 @@ new Vue({
 
             // Clientes Inativos
             clientes.forEach(cliente => {
-                const nome = cliente.nome || 'Cliente';
                 const ultimaCompra = ultimasCompras[cliente.nome] || cliente.ultimaCompra;
                 const totalComprado = totalCompras[cliente.nome] || 0;
                 
@@ -327,7 +337,9 @@ new Vue({
             const vendasProdutos: { [key: string]: { quantidade: number, valor: number, ultimaVenda: string | null } } = {};
             
             vendas.forEach(venda => {
-                const produtoNome = venda.produto || venda.cliente;
+                const produtoNome = venda.produto;
+                if (!produtoNome) return;
+                
                 if (!vendasProdutos[produtoNome]) {
                     vendasProdutos[produtoNome] = { quantidade: 0, valor: 0, ultimaVenda: null };
                 }
@@ -459,8 +471,10 @@ new Vue({
                 this.exportConfig = exportConfig;
             }
             
-            const ultimaSync = await dbManager.get('syncMetadata', 'ultimaSync');
-            (this as any).ultimaSync = ultimaSync;
+            const syncMetadata = await dbManager.get('syncMetadata', 'ultimaSync');
+            if (syncMetadata) {
+                this.ultimaSync = syncMetadata.valor;
+            }
         },
 
         async salvarConfiguracaoExportacao(): Promise<void> {
@@ -497,6 +511,7 @@ new Vue({
             for (const store of STORES) {
                 if (store !== 'config' && store !== 'exportConfig' && store !== 'syncMetadata') {
                     (this.db as any)[store] = await dbManager.getAll(store);
+                    console.log(`📊 ${store}:`, (this.db as any)[store].length, 'registros');
                 }
             }
             
@@ -505,6 +520,7 @@ new Vue({
                 const savedConfig = configs.find(c => c.id === 'blingConfig');
                 if (savedConfig) {
                     this.blingConfig = savedConfig;
+                    this.blingConectado = !!savedConfig.accessToken;
                 }
             }
 
@@ -538,7 +554,7 @@ new Vue({
                 this.blingConectado = false;
                 this.erroBling = 'Não foi possível conectar ao Bling';
                 this.resultadoImportacao.push('❌ Falha na conexão');
-                this.mostrarModalSimulacao = true;
+                // Não mostrar modal automaticamente
             } finally {
                 this.testandoBling = false;
             }
@@ -546,7 +562,7 @@ new Vue({
 
         async importarDadosBling(): Promise<void> {
             if (!this.blingConectado) {
-                this.mostrarModalSimulacao = true;
+                alert('Conecte-se ao Bling primeiro ou use dados simulados');
                 return;
             }
 
@@ -580,20 +596,25 @@ new Vue({
                 // Limpar dados existentes
                 await dbManager.clear(modulo);
                 
+                let importados = 0;
                 for (const item of dados) {
-                    await dbManager.put(modulo, { ...item, id: item.id.toString() });
+                    if (item.id) {
+                        await dbManager.put(modulo, { ...item, id: item.id.toString() });
+                        importados++;
+                    }
                 }
                 
-                this.resultadoImportacao.push(`✅ ${dados.length} ${modulo} importados`);
+                this.resultadoImportacao.push(`✅ ${importados} ${modulo} importados`);
             }
             
             // Atualizar timestamp da última sincronização
             const agora = new Date().toISOString();
             await dbManager.put('syncMetadata', { id: 'ultimaSync', valor: agora });
+            this.ultimaSync = agora;
         },
 
         async importarIncremental(): Promise<void> {
-            const ultimaSync = await dbManager.get('syncMetadata', 'ultimaSync') || '2000-01-01';
+            const ultimaSync = this.ultimaSync || '2000-01-01';
             const dataFiltro = new Date(ultimaSync).toISOString().split('T')[0];
             
             this.resultadoImportacao.push(`⏱️ Buscando dados alterados desde ${dataFiltro}...`);
@@ -610,6 +631,8 @@ new Vue({
                 let atualizados = 0;
                 
                 for (const item of dados) {
+                    if (!item.id) continue;
+                    
                     const id = item.id.toString();
                     const existente = await dbManager.get(modulo, id);
                     
@@ -630,28 +653,39 @@ new Vue({
             // Atualizar timestamp
             const agora = new Date().toISOString();
             await dbManager.put('syncMetadata', { id: 'ultimaSync', valor: agora });
+            this.ultimaSync = agora;
         },
 
         async fetchBlingData(endpoint: string): Promise<any[]> {
-            const url = `https://www.bling.com.br/Api/v3/${endpoint}`;
-            const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${this.blingConfig.accessToken}` }
-            });
-            
-            if (!response.ok) throw new Error(`Erro ${response.status}`);
-            const data = await response.json();
-            return data.data || [];
+            try {
+                const url = `https://www.bling.com.br/Api/v3/${endpoint}`;
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${this.blingConfig.accessToken}` }
+                });
+                
+                if (!response.ok) throw new Error(`Erro ${response.status}`);
+                const data = await response.json();
+                return data.data || [];
+            } catch (error) {
+                this.resultadoImportacao.push(`⚠️ Erro ao buscar ${endpoint}: ${error.message}`);
+                return [];
+            }
         },
 
         async fetchBlingDataModificados(endpoint: string, dataFiltro: string): Promise<any[]> {
-            const url = `https://www.bling.com.br/Api/v3/${endpoint}?dataAlteracao=${dataFiltro}`;
-            const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${this.blingConfig.accessToken}` }
-            });
-            
-            if (!response.ok) throw new Error(`Erro ${response.status}`);
-            const data = await response.json();
-            return data.data || [];
+            try {
+                const url = `https://www.bling.com.br/Api/v3/${endpoint}?dataAlteracao=${dataFiltro}`;
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${this.blingConfig.accessToken}` }
+                });
+                
+                if (!response.ok) throw new Error(`Erro ${response.status}`);
+                const data = await response.json();
+                return data.data || [];
+            } catch (error) {
+                this.resultadoImportacao.push(`⚠️ Erro ao buscar ${endpoint}: ${error.message}`);
+                return [];
+            }
         },
 
         // ========== DADOS SIMULADOS ==========
@@ -664,13 +698,14 @@ new Vue({
             this.resultadoImportacao = ['🧪 Gerando dados simulados...'];
             
             try {
+                // Limpar stores existentes
                 for (const store of STORES) {
                     if (store !== 'config' && store !== 'exportConfig' && store !== 'syncMetadata') {
                         await dbManager.clear(store);
                     }
                 }
 
-                // Clientes
+                // Clientes (10)
                 for (let i = 1; i <= 10; i++) {
                     const ultimaCompra = new Date();
                     ultimaCompra.setDate(ultimaCompra.getDate() - Math.floor(Math.random() * 120));
@@ -680,26 +715,31 @@ new Vue({
                         email: `cliente${i}@email.com`,
                         telefone: `(11) 9${String(i).padStart(4, '0')}-${String(i).padStart(4, '0')}`,
                         cidade: ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte'][Math.floor(Math.random() * 3)],
+                        estado: ['SP', 'RJ', 'MG'][Math.floor(Math.random() * 3)],
                         ultimaCompra: ultimaCompra.toISOString().split('T')[0]
                     });
                 }
 
-                // Produtos
+                // Produtos (10)
+                const categorias = ['Cosméticos', 'Perfumaria', 'Higiene', 'Maquiagem', 'Cabelos'];
                 for (let i = 1; i <= 10; i++) {
                     const preco = Math.floor(Math.random() * 900) + 100;
+                    const custo = preco * (Math.random() * 0.5 + 0.3);
                     await dbManager.put('produtos', {
                         id: `prod_${i}`,
                         nome: `Produto Simulado ${i}`,
                         sku: `SKU${String(i).padStart(3, '0')}`,
                         preco: preco,
-                        custo: preco * (Math.random() * 0.5 + 0.3),
-                        categoria: ['Cosméticos', 'Perfumaria', 'Higiene'][Math.floor(Math.random() * 3)],
+                        custo: custo,
+                        categoria: categorias[Math.floor(Math.random() * categorias.length)],
+                        marca: 'Marca Teste',
                         estoqueAtual: Math.floor(Math.random() * 200) + 10,
                         estoqueMinimo: 20
                     });
                 }
 
-                // Vendas
+                // Vendas (20)
+                const status = ['Concluído', 'Em andamento', 'Cancelado'];
                 for (let i = 1; i <= 20; i++) {
                     const dataVenda = new Date();
                     dataVenda.setDate(dataVenda.getDate() - Math.floor(Math.random() * 120));
@@ -709,7 +749,7 @@ new Vue({
                         produto: `Produto Simulado ${Math.ceil(Math.random() * 10)}`,
                         valor: Math.floor(Math.random() * 5000) + 200,
                         dataVenda: dataVenda.toISOString().split('T')[0],
-                        status: ['Concluído', 'Em andamento', 'Cancelado'][Math.floor(Math.random() * 3)]
+                        status: status[Math.floor(Math.random() * status.length)]
                     });
                 }
 
@@ -717,11 +757,11 @@ new Vue({
                 this.blingConfig.modoSimulado = true;
                 await dbManager.put('config', { ...this.blingConfig, id: 'blingConfig' });
                 
-                this.resultadoImportacao.push('✅ Dados simulados gerados!');
+                this.resultadoImportacao.push('✅ 10 clientes, 10 produtos e 20 vendas gerados!');
                 this.aba = 'dados';
                 
             } catch (error) {
-                console.error('Erro:', error);
+                console.error('Erro ao gerar dados:', error);
                 this.resultadoImportacao.push(`❌ Erro: ${error.message}`);
             } finally {
                 this.gerandoDados = false;
@@ -748,30 +788,16 @@ new Vue({
         // ========== EXPORTAÇÃO ==========
         gerarNomeArquivo(modulo: string): string {
             const data = new Date().toISOString().split('T')[0];
-            const timestamp = Date.now();
             let nome = this.exportConfig.nomeArquivo
                 .replace('{modulo}', modulo)
                 .replace('{data}', data)
-                .replace('{timestamp}', timestamp.toString())
+                .replace('{timestamp}', Date.now().toString())
                 .replace('{contador}', '1');
             
             if (this.formatoExportacao === 'json' && !nome.endsWith('.json')) nome += '.json';
             if (this.formatoExportacao === 'csv' && !nome.endsWith('.csv')) nome += '.csv';
             
             return nome;
-        },
-
-        gerarCaminhoCompleto(modulo: string): string {
-            const data = new Date().toISOString().split('T')[0];
-            let caminho = this.exportConfig.basePath;
-            
-            if (this.exportConfig.organizacao === 'data') {
-                caminho += `/${data}`;
-            } else if (this.exportConfig.organizacao === 'modulo') {
-                caminho += `/${modulo}`;
-            }
-            
-            return caminho;
         },
 
         async exportarDados(modulo: string): Promise<void> {
@@ -812,7 +838,7 @@ new Vue({
             const data = new Date().toISOString().split('T')[0];
             
             for (const [modulo, dados] of Object.entries(this.db)) {
-                if (dados.length) {
+                if (Array.isArray(dados) && dados.length) {
                     let dadosParaExportar = dados;
                     if (this.exportConfig.incluirMetadados === 'sim') {
                         dadosParaExportar = {
@@ -826,20 +852,16 @@ new Vue({
                         };
                     }
 
-                    const nomeArquivo = this.gerarNomeArquivo(modulo);
-                    const caminho = this.exportConfig.organizacao === 'data' ? `${data}/${nomeArquivo}` : nomeArquivo;
-                    
-                    if (this.formatoExportacao === 'json') {
-                        zip.file(caminho, JSON.stringify(dadosParaExportar, null, 2));
-                    } else if (this.formatoExportacao === 'csv') {
-                        const csv = this.gerarCSV(dados);
-                        zip.file(caminho, '\uFEFF' + csv);
-                    }
+                    const nomeArquivo = `${modulo}_${data}.json`;
+                    zip.file(nomeArquivo, JSON.stringify(dadosParaExportar, null, 2));
                 }
             }
 
             const conteudo = await zip.generateAsync({ type: 'blob' });
-            saveAs(conteudo, `exports_${data}.zip`);
+            saveAs(conteudo, `todos_dados_${data}.zip`);
+            
+            this.exportacaoTesteResultado = `✅ Todos os dados exportados em ZIP`;
+            setTimeout(() => { this.exportacaoTesteResultado = ''; }, 3000);
         },
 
         exportarJSON(data: any, nomeArquivo: string): void {
@@ -854,7 +876,10 @@ new Vue({
                 if (typeof v === 'number') {
                     return v.toString().replace('.', ',');
                 }
-                return `"${v}"`;
+                if (typeof v === 'string' && v.includes(';')) {
+                    return `"${v}"`;
+                }
+                return v;
             }).join(';'));
             return [headers, ...rows].join('\n');
         },
@@ -869,6 +894,7 @@ new Vue({
     async mounted(): Promise<void> {
         console.log('🚀 App iniciado');
         
+        // Verificar se usuário já está logado
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 const userDoc = await firestore.collection('users').doc(user.uid).get();
@@ -883,11 +909,13 @@ new Vue({
             }
         });
 
+        // Carregar configurações do Bling
         const configs = await dbManager.getAll('config');
         if (configs.length) {
             const savedConfig = configs.find(c => c.id === 'blingConfig');
             if (savedConfig) {
                 this.blingConfig = savedConfig;
+                this.blingConectado = !!savedConfig.accessToken;
             }
         }
     }
