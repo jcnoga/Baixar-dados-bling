@@ -1,0 +1,19 @@
+
+## 🛠️ Tecnologias Utilizadas
+
+- **Frontend**: Vue.js 2, HTML5, CSS3
+- **Backend**: Firebase (Auth + Firestore)
+- **Banco Local**: IndexedDB
+- **API**: Bling ERP v3
+- **Bibliotecas**: FileSaver.js, JSZip
+
+## 🔧 Configuração
+
+### 1. Firebase
+```javascript
+const firebaseConfig = {
+    apiKey: "AIzaSyCWr1rhmFYX2naAqWUaIb52oy6-6FJxhe8",
+    authDomain: "dados-bling.firebaseapp.com",
+    projectId: "dados-bling",
+    // ...
+};
